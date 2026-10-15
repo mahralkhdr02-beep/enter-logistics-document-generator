@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0F172A">
+<title>ENTER — Smart Logistics Document Generator</title>
+<!--
+  ============================================================
+  ENTER · Smart Logistics Document Generator  v1.3 (Single File)
+  One data entry form  ->  Draft B/L · Commercial Invoice · Packing List
+  · Works 100% offline — no server, no data transmission
+  · Cross-platform: iOS / Android / Windows / macOS
+  · iOS/Safari safe: preview-tab export (native Share sheet),
+    protected blob downloads, no-focus-zoom inputs (16px)
+  Credit: Powered by ENTER | Developed by Maher Ahmad Al Khder
+  ============================================================
+-->
+<style>
+  /* ================= DESIGN TOKENS ================= */
+  :root{
+    --slate-950:#020617; --slate-900:#0F172A; --slate-800:#1E293B; --slate-700:#334155;
+    --slate-500:#64748B; --slate-400:#94A3B8; --slate-300:#CBD5E1; --slate-200:#E2E8F0;
+    --slate-100:#F1F5F9; --slate-50:#F8FAFC; --white:#FFFFFF;
+    --radius:10px; --radius-sm:7px;
+    --shadow-sm:0 1px 2px rgba(2,6,23,.05);
+    --shadow-md:0 4px 12px rgba(2,6,23,.06);
+    --ring:0 0 0 3px rgba(15,23,42,.08);
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent;}
+  html{-webkit-font-smoothing:antialiased; -webkit-text-size-adjust:100%;}
+  body{font-family:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       background:var(--slate-50); color:var(--slate-800); font-size:14px; line-height:1.5;}
+
+  /* ================= TOP BAR ================= */
+  .topbar{position:sticky; top:0; z-index:60; background:rgba(255,255,255,.92); backdrop-filter:blur(8px);
+          -webkit-backdrop-filter:blur(8px); border-bottom:1px solid var(--slate-200);}
+  .topbar-inner{max-width:1180px; margin:0 auto; padding:14px 24px; display:flex; align-items:center; gap:12px;}
+  .brand-mark{width:32px; height:32px; border-radius:8px; background:var(--slate-900); color:#fff;
+              display:flex; align-items:center; justify-content:center; font-weight:700; font-size:15px; letter-spacing:.5px; flex:none;}
+  .brand-name{font-size:15px; font-weight:700; color:var(--slate-900); letter-spacing:-.2px;}
+  .brand-name span{color:var(--slate-400); font-weight:500;}
+  .topbar-tag{margin-left:auto; font-size:11px; color:var(--slate-500); border:1px solid var(--slate-200);
+              padding:4px 10px; border-radius:999px; background:var(--white); white-space:nowrap;}
+  .topbar-tag b{color:var(--slate-700); font-weight:600;}
+
+  /* ================= LAYOUT ================= */
+  main{max-width:1180px; margin:0 auto; padding:28px 24px 40px;}
+  .page-title{margin-bottom:22px;}
+  .page-title h1{font-size:22px; font-weight:700; color:var(--slate-900); letter-spacing:-.3px;}
+  .page-title p{font-size:13px; color:var(--slate-500); margin-top:2px;}
+
+  .card{background:var(--white); border:1px solid var(--slate-200); border-radius:var(--radius);
+        box-shadow:var(--shadow-sm); margin-bottom:16px; overflow:hidden;}
+  .card-head{display:flex; align-items:center; gap:10px; padding:14px 20px; border-bottom:1px solid var(--slate-100);}
+  .card-num{width:24px; height:24px; border-radius:6px; background:var(--slate-900); color:#fff;
+            font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none;}
+  .card-head h2{font-size:12.5px; font-weight:700; color:var(--slate-900); text-transform:uppercase; letter-spacing:.8px;}
+  .card-body{padding:18px 20px 20px;}
+
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(245px,1fr)); gap:14px 16px;}
+  .field{display:flex; flex-direction:column; min-width:0;}
+  .field.wide{grid-column:1/-1;}
+  label{font-size:11px; font-weight:600; color:var(--slate-500); margin-bottom:5px; letter-spacing:.4px;}
+  input,select,textarea{border:1px solid var(--slate-200); border-radius:var(--radius-sm); padding:9px 11px;
+        font-size:13.5px; font-family:inherit; background:var(--white); color:var(--slate-800);
+        transition:border-color .15s, box-shadow .15s;}
+  input::placeholder,textarea::placeholder{color:var(--slate-300);}
+  input:hover,select:hover,textarea:hover{border-color:var(--slate-300);}
+  input:focus,select:focus,textarea:focus{outline:none; border-color:var(--slate-700); box-shadow:var(--ring);}
+  textarea{resize:vertical; min-height:56px;}
+
+  /* ================= ACTION TOOLBAR ================= */
+  .toolbar{position:sticky; bottom:0; z-index:50; margin-top:8px; background:rgba(255,255,255,.94);
+           backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid var(--slate-200);
+           border-radius:12px; box-shadow:var(--shadow-md); padding:12px 14px;
+           display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .tb-group{display:flex; gap:8px; flex-wrap:wrap;}
+  .tb-sep{width:1px; align-self:stretch; background:var(--slate-200); margin:2px 4px;}
+  .tb-label{font-size:10px; font-weight:700; color:var(--slate-400); text-transform:uppercase;
+            letter-spacing:.8px; align-self:center; margin-right:2px;}
+  button{font-family:inherit; font-size:13px; font-weight:600; cursor:pointer; border-radius:8px;
+         padding:9px 15px; border:1px solid transparent; transition:all .16s ease; white-space:nowrap;
+         touch-action:manipulation;}
+  button:active{transform:scale(.97);}
+  .btn-primary{background:var(--slate-900); color:#fff;}
+  .btn-primary:hover{background:var(--slate-800); box-shadow:var(--shadow-md);}
+  .btn-outline{background:var(--white); color:var(--slate-700); border-color:var(--slate-300);}
+  .btn-outline:hover{border-color:var(--slate-900); color:var(--slate-900); background:var(--slate-50);}
+  .btn-soft{background:var(--slate-100); color:var(--slate-700); border-color:transparent;}
+  .btn-soft:hover{background:var(--slate-200); color:var(--slate-900);}
+  .tb-hint{margin-left:auto; font-size:11.5px; color:var(--slate-400); align-self:center; white-space:nowrap;}
+
+  /* ================= MODAL ================= */
+  .modal-back{position:fixed; inset:0; background:rgba(2,6,23,.5); backdrop-filter:blur(3px);
+              -webkit-backdrop-filter:blur(3px); display:none; align-items:center; justify-content:center;
+              z-index:100; padding:16px;}
+  .modal-back.open{display:flex;}
+  .modal{background:var(--white); border:1px solid var(--slate-200); border-radius:14px;
+         width:min(680px,100%); max-height:88vh; overflow:auto; box-shadow:0 20px 50px rgba(2,6,23,.25);
+         -webkit-overflow-scrolling:touch;}
+  .modal-head{padding:18px 22px 0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+  .modal-head h3{font-size:16px; font-weight:700; color:var(--slate-900);}
+  .modal-head p{font-size:12.5px; color:var(--slate-500); margin-top:4px; line-height:1.55;}
+  .modal-body{padding:16px 22px 22px;}
+  .modal textarea{width:100%; min-height:230px; font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+                  font-size:12.5px; background:var(--slate-50); margin-bottom:14px;}
+  .modal-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .modal-close{background:none; border:none; font-size:26px; line-height:1; color:var(--slate-400);
+               cursor:pointer; padding:0 4px; touch-action:manipulation;}
+  .modal-close:hover{color:var(--slate-900);}
+
+  /* ================= TOAST ================= */
+  #toast{position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(90px);
+         background:var(--slate-900); color:#fff; padding:10px 20px; border-radius:999px;
+         font-size:13px; font-weight:500; opacity:0; transition:all .3s cubic-bezier(.2,.8,.3,1); z-index:200;
+         box-shadow:var(--shadow-md); max-width:92vw; text-align:center; pointer-events:none;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* ================= LEGAL & PRIVACY PANEL (UI footer) ================= */
+  .legal-panel{margin-top:30px; background:var(--white); border:1px solid var(--slate-200);
+               border-radius:var(--radius); padding:20px 22px; box-shadow:var(--shadow-sm);}
+  .legal-panel h3{font-size:11px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+                  color:var(--slate-500); margin-bottom:12px; display:flex; align-items:center; gap:8px;}
+  .legal-panel h3::after{content:""; flex:1; height:1px; background:var(--slate-200);}
+  .legal-item{font-size:11.5px; color:var(--slate-500); line-height:1.7; margin-bottom:10px;
+              padding:2px 0 2px 14px; border-left:3px solid var(--slate-200);}
+  .legal-item b{color:var(--slate-800);}
+  .legal-credit{margin-top:14px; padding-top:12px; border-top:1px solid var(--slate-100);
+                font-size:12px; color:var(--slate-500); text-align:center;}
+  .legal-credit b{color:var(--slate-800); font-weight:600;}
+
+  /* ================= PRINT ================= */
+  #printArea{display:none;}
+  @media print{
+    .screen-only{display:none !important;}
+    body{background:#fff;}
+    #printArea{display:block !important;}
+    #printArea *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}
+    tr,td,div{page-break-inside:avoid;}
+    @page{size:A4; margin:10mm;}
+  }
+
+  /* ================= MOBILE / TOUCH (<=640px) ================= */
+  @media (max-width:640px){
+    .topbar-inner{padding:12px 16px;}
+    .topbar-tag{display:none;}
+    .brand-name span{display:none;}
+    main{padding:18px 14px 28px;}
+    .page-title h1{font-size:19px;}
+    .page-title p{font-size:12.5px;}
+    .card-head{padding:12px 16px;}
+    .card-body{padding:14px 16px 16px;}
+    .grid{grid-template-columns:1fr 1fr; gap:12px;}
+    .field.wide{grid-column:1/-1;}
+    /* 16px prevents iOS Safari auto-zoom on input focus */
+    input,select,textarea{font-size:16px; padding:11px 12px;}
+    label{font-size:10.5px;}
+    .toolbar{position:static; border-radius:12px; margin:8px 0 0; padding:12px;}
+    .toolbar .tb-group{width:100%;}
+    .toolbar button{flex:1 1 44%; min-height:46px; padding:12px 8px; font-size:13.5px;}
+    .tb-label{width:100%; margin:6px 0 0;}
+    .tb-hint{display:none;}
+    .tb-sep{display:none;}
+    .modal{width:100%; height:100%; max-height:none; border-radius:0;}
+    .modal textarea{min-height:40vh;}
+    .legal-panel{padding:16px;}
+  }
+  @media (max-width:400px){
+    .grid{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ================= TOP BAR ================= -->
+<header class="topbar screen-only">
+  <div class="topbar-inner">
+    <div class="brand-mark">E</div>
+    <div class="brand-name">ENTER <span>/ Smart Logistics Document Generator</span></div>
+    <span class="topbar-tag"><b>v1.3</b> · Offline · iOS Ready</span>
+  </div>
+</header>
+
+<main class="screen-only">
+
+  <div class="page-title">
+    <h1>Shipment Document Workspace</h1>
+    <p>Enter shipment data once — generate a synchronized Draft B/L, Commercial Invoice, and Packing List.</p>
+  </div>
+
+  <!-- ============ 01 · COMPANY / FREIGHT FORWARDER ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">01</span><h2>Company / Freight Forwarder</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>Company Name</label><input id="companyName" placeholder="Printed at the top of all documents" autocomplete="organization"></div>
+        <div class="field"><label>Phone</label><input id="companyPhone" placeholder="+966 ..." type="tel" autocomplete="tel"></div>
+        <div class="field"><label>Email</label><input id="companyEmail" placeholder="ops@company.com" type="email" autocomplete="email"></div>
+        <div class="field"><label>Tax / Registration ID</label><input id="companyTaxId" placeholder="Optional — CR / VAT number"></div>
+        <div class="field wide"><label>Company Address</label><input id="companyAddress" placeholder="Street, City, Country" autocomplete="street-address"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 02 · DOCUMENT REFERENCES ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">02</span><h2>Document References</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>B/L No.</label><input id="blNo" placeholder="e.g. MAEU123456789"></div>
+        <div class="field"><label>B/L Date</label><input id="blDate" type="date"></div>
+        <div class="field"><label>Invoice No.</label><input id="invoiceNo" placeholder="e.g. INV-2026-0451"></div>
+        <div class="field"><label>Invoice Date</label><input id="invoiceDate" type="date"></div>
+        <div class="field"><label>Incoterms</label>
+          <select id="incoterms">
+            <option>FOB</option><option>CIF</option><option>CFR</option><option>EXW</option>
+            <option>FCA</option><option>DDP</option><option>DAP</option><option>DDU</option>
+          </select>
+        </div>
+        <div class="field"><label>Freight</label>
+          <select id="freight"><option>Prepaid</option><option>Collect</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 03 · PARTIES ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">03</span><h2>Parties</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>Shipper (Name)</label><input id="shipperName" placeholder="Exporter / sender company" autocomplete="off"></div>
+        <div class="field"><label>Shipper (Address)</label><input id="shipperAddress" placeholder="Street, City, Country" autocomplete="off"></div>
+        <div class="field"><label>Consignee (Name)</label><input id="consigneeName" placeholder="Receiver company" autocomplete="off"></div>
+        <div class="field"><label>Consignee (Address)</label><input id="consigneeAddress" placeholder="Street, City, Country" autocomplete="off"></div>
+        <div class="field"><label>Notify Party (Name)</label><input id="notifyName" placeholder="Defaults to consignee if blank" autocomplete="off"></div>
+        <div class="field"><label>Notify Party (Address)</label><input id="notifyAddress" autocomplete="off"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 04 · VESSEL & VOYAGE ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">04</span><h2>Vessel &amp; Voyage</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>Vessel Name</label><input id="vesselName" placeholder="e.g. MSC OSCAR" autocomplete="off"></div>
+        <div class="field"><label>Voyage No.</label><input id="voyageNo" placeholder="e.g. 128E" autocomplete="off"></div>
+        <div class="field"><label>Port of Loading (POL)</label><input id="pol" placeholder="e.g. Jeddah, Saudi Arabia" autocomplete="off"></div>
+        <div class="field"><label>Port of Discharge (POD)</label><input id="pod" placeholder="e.g. Jebel Ali, UAE" autocomplete="off"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 05 · CARGO DETAILS ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">05</span><h2>Cargo Details</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>Container No.</label><input id="containerNo" placeholder="e.g. MSKU4829173" autocomplete="off"></div>
+        <div class="field"><label>Seal No.</label><input id="sealNo" placeholder="e.g. SEAL99821" autocomplete="off"></div>
+        <div class="field"><label>Marks &amp; Nos.</label><input id="marks" placeholder="Shipping marks on cartons" autocomplete="off"></div>
+        <div class="field"><label>No. of Packages</label><input id="packagesNo" type="number" min="0" placeholder="e.g. 850"></div>
+        <div class="field"><label>Package Type</label>
+          <select id="packageType">
+            <option>Cartons</option><option>Pallets</option><option>Boxes</option>
+            <option>Bags</option><option>Drums</option><option>Crates</option><option>Rolls</option>
+          </select>
+        </div>
+        <div class="field"><label>Gross Weight (KG)</label><input id="grossWeight" type="number" min="0" step="0.001" placeholder="e.g. 12500"></div>
+        <div class="field"><label>Net Weight (KG)</label><input id="netWeight" type="number" min="0" step="0.001" placeholder="e.g. 11800"></div>
+        <div class="field"><label>Volume (CBM)</label><input id="volume" type="number" min="0" step="0.001" placeholder="e.g. 25.400"></div>
+        <div class="field wide"><label>Description of Goods</label>
+          <textarea id="goodsDescription" rows="2" placeholder="e.g. Household ceramic products - HS Code 6910.10"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 06 · INVOICE VALUE ============ -->
+  <div class="card">
+    <div class="card-head"><span class="card-num">06</span><h2>Invoice Value</h2></div>
+    <div class="card-body">
+      <div class="grid">
+        <div class="field"><label>Invoice Value</label><input id="invoiceValue" type="number" min="0" step="0.01" placeholder="e.g. 24500"></div>
+        <div class="field"><label>Currency</label>
+          <select id="currency">
+            <option>USD</option><option>EUR</option><option>GBP</option><option>AED</option>
+            <option>SAR</option><option>QAR</option><option>KWD</option><option>CNY</option><option>JPY</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ACTION TOOLBAR ================= -->
+  <div class="toolbar">
+    <div class="tb-group">
+      <button class="btn-outline" onclick="openParser()">Parse Invoice Text</button>
+      <button class="btn-soft" onclick="loadSample()">Sample Data</button>
+      <button class="btn-soft" onclick="clearForm()">Clear</button>
+    </div>
+    <div class="tb-sep"></div>
+    <span class="tb-label">Export</span>
+    <div class="tb-group">
+      <button class="btn-outline" onclick="exportExcel('invoice')">Invoice (.xls)</button>
+      <button class="btn-outline" onclick="exportExcel('packing')">Packing List (.xls)</button>
+      <button class="btn-outline" onclick="previewAll()">Preview All</button>
+    </div>
+    <div class="tb-sep"></div>
+    <span class="tb-label">Generate PDF</span>
+    <div class="tb-group">
+      <button class="btn-outline" onclick="printDoc('bl')">Draft B/L</button>
+      <button class="btn-outline" onclick="printDoc('invoice')">Commercial Invoice</button>
+      <button class="btn-primary" onclick="printDoc('packing')">Packing List</button>
+    </div>
+    <span class="tb-hint">Draft auto-saved locally</span>
+  </div>
+
+  <!-- ================= LEGAL & PRIVACY PANEL ================= -->
+  <section class="legal-panel screen-only">
+    <h3>Legal &amp; Privacy</h3>
+    <div class="legal-item"><b>Privacy Note:</b> All data is processed 100% locally within your device's browser. No commercial invoices, shipping data, or trade information is ever collected, transmitted, or stored on external servers.</div>
+    <div class="legal-item"><b>Terms of Use:</b> ENTER is provided "as is" without warranties of any kind, express or implied. The developer (Maher Ahmad Al Khder) shall not be held liable for any inaccuracies, errors, or regulatory/customs compliance issues arising from the use of generated documents.</div>
+    <div class="legal-credit">Powered by <b>ENTER</b> | Developed by <b>Maher Ahmad Al Khder</b> · v1.3</div>
+  </section>
+</main>
+
+<!-- ================= PARSER MODAL ================= -->
+<div class="modal-back screen-only" id="parserModal">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <h3>Smart Paste Parser</h3>
+        <p>Copy any supplier invoice or booking confirmation text and paste it below. The tool detects
+           parties, vessel, container, weights, and values automatically. Use <b>Load Sample Text</b>
+           first to preview the extraction logic.</p>
+      </div>
+      <button class="modal-close" onclick="closeParser()" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <textarea id="rawText" placeholder="Paste raw invoice text here..."></textarea>
+      <div class="modal-actions">
+        <button class="btn-soft" onclick="fillSampleText()">Load Sample Text</button>
+        <button class="btn-primary" onclick="runParser()">Extract &amp; Fill Form</button>
+        <button class="btn-outline" onclick="closeParser()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="screen-only"></div>
+<div id="printArea"></div>
+
+<script>
+/* ================================================================
+   SECTION A — DATA MODEL & PLATFORM DETECTION
+   ================================================================ */
+const FIELDS = ["companyName","companyAddress","companyPhone","companyEmail","companyTaxId",
+  "blNo","blDate","invoiceNo","invoiceDate","incoterms","freight",
+  "shipperName","shipperAddress","consigneeName","consigneeAddress",
+  "notifyName","notifyAddress","vesselName","voyageNo","pol","pod",
+  "containerNo","sealNo","marks","packagesNo","packageType",
+  "grossWeight","netWeight","volume","goodsDescription",
+  "invoiceValue","currency"];
+
+/* iOS / iPadOS detection — covers Safari, Chrome, Edge, Firefox on iOS
+   (all use WebKit) plus iPadOS reporting as MacIntel. */
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+const IOS_DOC_HINT  = "Opened in a new tab — tap Share to Print or Save as PDF";
+const IOS_XLS_HINT  = "Opened in a new tab — tap Share to save the file";
+
+function collectData(){
+  const d = {};
+  FIELDS.forEach(id => d[id] = document.getElementById(id).value.trim());
+  // Notify defaults to Consignee when left empty (standard B/L practice)
+  if(!d.notifyName)     d.notifyName    = d.consigneeName;
+  if(!d.notifyAddress)  d.notifyAddress = d.consigneeAddress;
+  return d;
+}
+
+function fillForm(d){
+  FIELDS.forEach(id => { if(d[id] !== undefined) document.getElementById(id).value = d[id]; });
+}
+
+/* ---------- Auto-save draft to browser (localStorage) ---------- */
+const STORE_KEY = "sldg_draft_v1";
+let saveTimer;
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(collectData())); }catch(e){ /* private mode */ }
+  }, 400);
+}
+function restoreDraft(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ fillForm(JSON.parse(raw)); toast("Draft restored"); }
+  }catch(e){ /* ignore corrupt draft */ }
+}
+function clearForm(){
+  if(!confirm("Clear all fields?")) return;
+  FIELDS.forEach(id => document.getElementById(id).value = "");
+  try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  toast("Form cleared");
+}
+document.addEventListener("input", scheduleSave);
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2600);
+}
+
+/* ================================================================
+   SECTION B — SMART PASTE PARSER
+   ================================================================ */
+const KEYWORDS = [
+  {keys:["shipper","exporter","ship from","seller","from:"],        field:"shipperName"},
+  {keys:["consignee","importer","ship to","buyer","bill to","to:"], field:"consigneeName"},
+  {keys:["notify","also notify"],                                   field:"notifyName"},
+  {keys:["vessel"],                                                 field:"vesselName"},
+  {keys:["voyage","voy."],                                          field:"voyageNo"},
+  {keys:["port of loading","loading port","pol","origin"],          field:"pol"},
+  {keys:["port of discharge","discharge port","pod","destination"], field:"pod"},
+  {keys:["container","cont. no","cont no","ctr no"],                field:"containerNo"},
+  {keys:["seal"],                                                   field:"sealNo"},
+  {keys:["marks"],                                                  field:"marks"},
+  {keys:["description of goods","goods","commodity","cargo"],       field:"goodsDescription"},
+  {keys:["packages","cartons","ctns","pkgs","no. of pkgs","total packages"], field:"packagesNo"},
+  {keys:["gross weight","gross","g.w"],                             field:"grossWeight"},
+  {keys:["net weight","net","n.w"],                                 field:"netWeight"},
+  {keys:["volume","cbm","measurement","m3"],                        field:"volume"},
+  {keys:["invoice no","inv no","inv."],                             field:"invoiceNo"},
+  {keys:["invoice value","total amount","total value","amount","value"], field:"invoiceValue"},
+  {keys:["invoice date","date"],                                    field:"invoiceDate"},
+  {keys:["b/l no","bl no","booking"],                               field:"blNo"}
+];
+
+function extractNumber(str){
+  const m = String(str).replace(/,/g,"").match(/-?\d+(\.\d+)?/);
+  return m ? m[0] : "";
+}
+
+function runParser(){
+  const text = document.getElementById("rawText").value;
+  if(!text.trim()){ toast("Paste some text first"); return; }
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const found = {};
+  const used  = new Set();
+
+  lines.forEach((line, i) => {
+    const low = line.toLowerCase();
+    for(const rule of KEYWORDS){
+      if(used.has(rule.field)) continue;
+      const hit = rule.keys.some(k => low.includes(k));
+      if(!hit) continue;
+      let val = line.split(/[:：]/).slice(1).join(":").trim();
+      if(!val) val = (lines[i+1] || "");
+      if(rule.field.endsWith("Weight") || rule.field==="volume"
+         || rule.field==="packagesNo" || rule.field==="invoiceValue"){
+        val = extractNumber(val || line);
+      }
+      if(val){ found[rule.field] = val; used.add(rule.field); }
+      break;
+    }
+  });
+
+  const cur = text.match(/\b(USD|EUR|GBP|AED|SAR|QAR|KWD|CNY|JPY)\b/i);
+  if(cur) found.currency = cur[1].toUpperCase();
+
+  const date = text.match(/\b(20\d{2}-\d{2}-\d{2})\b/) || text.match(/\b(\d{2}\/\d{2}\/20\d{2})\b/);
+  if(date && !found.invoiceDate) found.invoiceDate = date[1];
+
+  fillForm(found);
+  scheduleSave();
+  closeParser();
+  const n = Object.keys(found).length;
+  toast(n ? `Extracted ${n} fields — please review` : "No fields recognized");
+}
+
+function openParser(){ document.getElementById("parserModal").classList.add("open"); }
+function closeParser(){ document.getElementById("parserModal").classList.remove("open"); }
+
+function loadSample(){
+  fillForm({
+    companyName:"Smart Logistics Co.", companyAddress:"King Fahd Road, Riyadh, Saudi Arabia",
+    companyPhone:"+966 11 234 5678", companyEmail:"ops@smartlogistics.com", companyTaxId:"CR 1010-456789",
+    blNo:"MAEU482917355", blDate:"2026-10-20", invoiceNo:"INV-2026-0451", invoiceDate:"2026-10-14",
+    incoterms:"FOB", freight:"Prepaid",
+    shipperName:"Al-Noor Trading Est.", shipperAddress:"Industrial City Phase 4, Riyadh, Saudi Arabia",
+    consigneeName:"Gulf Star Imports LLC", consigneeAddress:"P.O. Box 118822, Jebel Ali, Dubai, UAE",
+    notifyName:"", notifyAddress:"",
+    vesselName:"MSC OSCAR", voyageNo:"128E", pol:"Jeddah, Saudi Arabia", pod:"Jebel Ali, UAE",
+    containerNo:"MSKU4829173", sealNo:"SEAL99821", marks:"GS/DXB/2026",
+    packagesNo:"850", packageType:"Cartons",
+    grossWeight:"12500", netWeight:"11800", volume:"25.400",
+    goodsDescription:"Household ceramic products - HS Code 6910.10",
+    invoiceValue:"24500", currency:"USD"
+  });
+  scheduleSave();
+  toast("Sample shipment loaded");
+}
+
+function fillSampleText(){
+  document.getElementById("rawText").value =
+`COMMERCIAL INVOICE
+Invoice No: INV-2026-0451
+Invoice Date: 2026-10-14
+Exporter: Al-Noor Trading Est.
+Industrial City Phase 4, Riyadh, Saudi Arabia
+Consignee: Gulf Star Imports LLC
+P.O. Box 118822, Jebel Ali, Dubai, UAE
+Vessel: MSC OSCAR
+Voyage: 128E
+Port of Loading: Jeddah, Saudi Arabia
+Port of Discharge: Jebel Ali, UAE
+Container: MSKU4829173
+Seal: SEAL99821
+Description of Goods: Household ceramic products - HS Code 6910.10
+Total Packages: 850 Cartons
+Gross Weight: 12,500 KG
+Net Weight: 11,800 KG
+Volume: 25.400 CBM
+Total Amount: USD 24,500.00`;
+}
+</script>
+
+<script>
+/* ================================================================
+   SECTION C — DOCUMENT GENERATORS (print-ready A4, inline styles)
+   ================================================================ */
+const esc = s => String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const num = (s,d=3) => { const n=parseFloat(s); return isNaN(n)? (s||"-") : n.toLocaleString("en-US",{minimumFractionDigits:0,maximumFractionDigits:d}); };
+const today = () => new Date().toISOString().slice(0,10);
+const docDate = d => d.blDate || d.invoiceDate || today();
+
+const DISCLAIMER = "Disclaimer: Generated for operational drafting and administrative purposes. Final regulatory and customs compliance remains the sole responsibility of the user.";
+const CREDIT = 'Powered by <b style="color:#94a3b8;font-weight:600;">ENTER</b> &nbsp;|&nbsp; Developed by <b style="color:#94a3b8;font-weight:600;">Maher Ahmad Al Khder</b>';
+
+function partyBox(label, name, addr){
+  return `<div style="border:1px solid #0F172A;padding:6px 8px;min-height:64px;">
+    <div style="font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;">${label}</div>
+    <div style="font-weight:700;margin-top:2px;">${esc(name)||"—"}</div>
+    <div style="color:#334155;">${esc(addr)||""}</div></div>`;
+}
+
+/* Shared header/footer: dynamic branding + legal disclaimer + credit */
+function docShell(title, subtitle, body, d){
+  d = d || {};
+  const hasBrand = !!(d.companyName && d.companyName.trim());
+  const brand = hasBrand
+    ? `<div>
+        <div style="font-size:18px;font-weight:700;color:#0F172A;line-height:1.2;">${esc(d.companyName)}</div>
+        ${d.companyAddress ? `<div style="font-size:10px;color:#475569;margin-top:2px;">${esc(d.companyAddress)}</div>` : ""}
+        ${(d.companyPhone || d.companyEmail) ? `<div style="font-size:10px;color:#475569;">${[d.companyPhone, d.companyEmail].filter(Boolean).map(esc).join(" &nbsp;·&nbsp; ")}</div>` : ""}
+        ${d.companyTaxId ? `<div style="font-size:9px;color:#94a3b8;margin-top:1px;">Tax / Reg. ID: ${esc(d.companyTaxId)}</div>` : ""}
+      </div>`
+    : `<div>
+        <div style="font-size:11px;color:#94a3b8;letter-spacing:3px;text-transform:uppercase;">International Shipping Document</div>
+        <div style="font-size:9px;color:#cbd5e1;">Freight Forwarding &amp; Customs Services</div>
+      </div>`;
+
+  return `
+  <div style="font-family:Arial,Helvetica,sans-serif;font-size:12px;color:#1e293b;max-width:190mm;margin:0 auto;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0F172A;padding-bottom:10px;">
+      ${brand}
+      <div style="text-align:right;">
+        <div style="font-size:16px;font-weight:700;color:#0F172A;">${title}</div>
+        <div style="font-size:10px;color:#64748b;">${subtitle}</div>
+      </div>
+    </div>
+    ${body}
+    <div style="margin-top:30px;border-top:1px solid #e2e8f0;padding-top:8px;">
+      <div style="font-size:9px;color:#94a3b8;text-align:center;margin-bottom:6px;line-height:1.5;">${DISCLAIMER}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;">
+        <div style="font-size:9px;color:#94a3b8;">Generated by ENTER Smart Logistics Document Generator · ${today()} · Verify all figures before release.</div>
+        <div style="font-size:8.5pt;color:#cbd5e1;text-align:right;white-space:nowrap;">${CREDIT}</div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ================================================================
+   1) DRAFT BILL OF LADING — SHIPPING INSTRUCTIONS
+   ================================================================ */
+function buildBL(d){
+  const body = `
+  <div style="text-align:center;margin:10px 0;">
+    <span style="font-size:12px;font-weight:700;letter-spacing:1px;border:1.5px solid #b45309;color:#b45309;padding:3px 14px;">DRAFT — FOR CARRIER VERIFICATION</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+    <tr>
+      <td style="width:50%;padding-right:4px;">${partyBox("Shipper / Exporter", d.shipperName, d.shipperAddress)}</td>
+      <td style="width:50%;padding-left:4px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="font-size:9px;font-weight:700;color:#475569;">B/L No.</td><td style="font-weight:700;">${esc(d.blNo)||"—"}</td></tr>
+          <tr><td style="font-size:9px;font-weight:700;color:#475569;">Date</td><td>${esc(docDate(d))}</td></tr>
+          <tr><td style="font-size:9px;font-weight:700;color:#475569;">Freight</td><td>${esc(d.freight)}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;margin-bottom:8px;">
+    <tr><td style="width:50%;padding-right:4px;">${partyBox("Consignee", d.consigneeName, d.consigneeAddress)}</td>
+        <td style="width:50%;padding-left:4px;">${partyBox("Notify Party", d.notifyName, d.notifyAddress)}</td></tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #0F172A;margin-bottom:8px;">
+    <tr style="background:#f1f5f9;">
+      <td style="padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Vessel / Voyage</td>
+      <td style="padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Port of Loading</td>
+      <td style="padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Port of Discharge</td>
+    </tr>
+    <tr>
+      <td style="padding:5px 8px;font-weight:700;">${esc(d.vesselName)||"—"} / ${esc(d.voyageNo)||"—"}</td>
+      <td style="padding:5px 8px;">${esc(d.pol)||"—"}</td>
+      <td style="padding:5px 8px;">${esc(d.pod)||"—"}</td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;border:1px solid #0F172A;">
+    <tr style="background:#f1f5f9;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">
+      <td style="border:1px solid #0F172A;padding:5px;">Container / Seal</td>
+      <td style="border:1px solid #0F172A;padding:5px;">Marks &amp; Nos.</td>
+      <td style="border:1px solid #0F172A;padding:5px;">No. of Packages</td>
+      <td style="border:1px solid #0F172A;padding:5px;">Description of Goods</td>
+      <td style="border:1px solid #0F172A;padding:5px;">Gross Weight (KG)</td>
+      <td style="border:1px solid #0F172A;padding:5px;">Measurement (CBM)</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #0F172A;padding:5px;font-weight:700;">${esc(d.containerNo)||"—"}<br><span style="color:#64748b;font-weight:400;">Seal: ${esc(d.sealNo)||"—"}</span></td>
+      <td style="border:1px solid #0F172A;padding:5px;">${esc(d.marks)||"N/M"}</td>
+      <td style="border:1px solid #0F172A;padding:5px;text-align:center;">${num(d.packagesNo,0)} ${esc(d.packageType)}</td>
+      <td style="border:1px solid #0F172A;padding:5px;">${esc(d.goodsDescription)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px;text-align:right;">${num(d.grossWeight)}</td>
+      <td style="border:1px solid #0F172A;padding:5px;text-align:right;">${num(d.volume)}</td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;margin-top:26px;">
+    <tr>
+      <td style="width:33%;border-top:1px solid #0F172A;padding-top:4px;font-size:10px;">Place &amp; Date of Issue</td>
+      <td style="width:33%;"></td>
+      <td style="width:33%;border-top:1px solid #0F172A;padding-top:4px;font-size:10px;">For the Carrier (Signature &amp; Stamp)</td>
+    </tr>
+  </table>`;
+  return docShell("DRAFT BILL OF LADING", "Shipping Instructions · Original for Shipper", body, d);
+}
+
+/* ================================================================
+   2) COMMERCIAL INVOICE
+   ================================================================ */
+function buildInvoice(d){
+  const unit = (parseFloat(d.invoiceValue)||0) / (parseFloat(d.packagesNo)||1);
+  const body = `
+  <table style="width:100%;border-collapse:collapse;margin:10px 0;">
+    <tr>
+      <td style="width:50%;padding-right:4px;">${partyBox("Seller / Exporter", d.shipperName, d.shipperAddress)}</td>
+      <td style="width:50%;padding-left:4px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Invoice No.</td><td style="font-weight:700;">${esc(d.invoiceNo)||"—"}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Invoice Date</td><td>${esc(d.invoiceDate)||esc(today())}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Incoterms</td><td>${esc(d.incoterms)}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">B/L No.</td><td>${esc(d.blNo)||"—"}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  ${partyBox("Buyer / Consignee (Bill To)", d.consigneeName, d.consigneeAddress)}
+  <table style="width:100%;border-collapse:collapse;font-size:11px;margin:8px 0;">
+    <tr style="background:#f1f5f9;">
+      <td style="border:1px solid #0F172A;padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Vessel / Voyage</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Port of Loading</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Port of Discharge</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;font-size:9px;font-weight:700;color:#475569;text-transform:uppercase;">Container</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #0F172A;padding:5px 8px;">${esc(d.vesselName)||"—"} / ${esc(d.voyageNo)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;">${esc(d.pol)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;">${esc(d.pod)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;">${esc(d.containerNo)||"—"}</td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;margin-top:4px;">
+    <tr style="background:#0F172A;color:#fff;font-size:10px;">
+      <td style="border:1px solid #0F172A;padding:6px;">Marks &amp; Nos.</td>
+      <td style="border:1px solid #0F172A;padding:6px;">Description of Goods</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:center;">Quantity</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">Unit Price (${esc(d.currency)})</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">Total (${esc(d.currency)})</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #0F172A;padding:6px;">${esc(d.marks)||"N/M"}</td>
+      <td style="border:1px solid #0F172A;padding:6px;">${esc(d.goodsDescription)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:center;">${num(d.packagesNo,0)} ${esc(d.packageType)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(unit,2)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;font-weight:700;">${num(d.invoiceValue,2)}</td>
+    </tr>
+    <tr>
+      <td colspan="4" style="border:1px solid #0F172A;padding:6px;text-align:right;font-weight:700;background:#f1f5f9;">TOTAL VALUE (${esc(d.incoterms)} ${esc(d.pol)})</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;font-weight:700;background:#f1f5f9;">${esc(d.currency)} ${num(d.invoiceValue,2)}</td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:6px;">
+    <tr><td style="padding:3px 0;color:#475569;font-size:9px;font-weight:700;width:32%;">Total Packages (in words)</td><td>${num(d.packagesNo,0)} ${esc(d.packageType)} only</td></tr>
+    <tr><td style="padding:3px 0;color:#475569;font-size:9px;font-weight:700;">Gross / Net Weight</td><td>${num(d.grossWeight)} KG / ${num(d.netWeight)} KG</td></tr>
+    <tr><td style="padding:3px 0;color:#475569;font-size:9px;font-weight:700;">Total Volume</td><td>${num(d.volume)} CBM</td></tr>
+  </table>
+  <p style="font-size:10px;margin-top:10px;color:#334155;">We hereby declare that this invoice is true and correct and that the goods described above are of ${esc(d.shipperAddress.split(",").pop().trim()||"the stated origin")} origin.</p>
+  <table style="width:100%;border-collapse:collapse;margin-top:34px;">
+    <tr><td style="width:40%;border-top:1px solid #0F172A;padding-top:4px;font-size:10px;">Name &amp; Signature of Exporter (Stamp)</td><td></td></tr>
+  </table>`;
+  return docShell("COMMERCIAL INVOICE", "For Customs &amp; Banking Purposes", body, d);
+}
+
+/* ================================================================
+   3) PACKING LIST
+   ================================================================ */
+function buildPacking(d){
+  const body = `
+  <table style="width:100%;border-collapse:collapse;margin:10px 0;">
+    <tr>
+      <td style="width:50%;padding-right:4px;">${partyBox("Shipper / Exporter", d.shipperName, d.shipperAddress)}</td>
+      <td style="width:50%;padding-left:4px;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;">
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Packing List Ref.</td><td style="font-weight:700;">PL-${esc(d.invoiceNo)||esc(d.blDate||today())}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Date</td><td>${esc(docDate(d))}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">B/L No.</td><td>${esc(d.blNo)||"—"}</td></tr>
+          <tr><td style="padding:2px 0;color:#475569;font-size:9px;font-weight:700;">Container / Seal</td><td>${esc(d.containerNo)||"—"} / ${esc(d.sealNo)||"—"}</td></tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+  ${partyBox("Consignee", d.consigneeName, d.consigneeAddress)}
+  <table style="width:100%;border-collapse:collapse;font-size:11px;margin:8px 0;">
+    <tr>
+      <td style="border:1px solid #0F172A;padding:5px 8px;"><b style="color:#475569;font-size:9px;">VESSEL/VOY:</b> ${esc(d.vesselName)||"—"} / ${esc(d.voyageNo)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;"><b style="color:#475569;font-size:9px;">POL:</b> ${esc(d.pol)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:5px 8px;"><b style="color:#475569;font-size:9px;">POD:</b> ${esc(d.pod)||"—"}</td>
+    </tr>
+  </table>
+  <table style="width:100%;border-collapse:collapse;">
+    <tr style="background:#0F172A;color:#fff;font-size:10px;">
+      <td style="border:1px solid #0F172A;padding:6px;">Marks &amp; Nos.</td>
+      <td style="border:1px solid #0F172A;padding:6px;">Description of Goods</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:center;">Cartons</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">Net Weight (KG)</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">Gross Weight (KG)</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">Volume (CBM)</td>
+    </tr>
+    <tr>
+      <td style="border:1px solid #0F172A;padding:6px;">${esc(d.marks)||"N/M"}</td>
+      <td style="border:1px solid #0F172A;padding:6px;">${esc(d.goodsDescription)||"—"}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:center;">${num(d.packagesNo,0)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.netWeight)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.grossWeight)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.volume)}</td>
+    </tr>
+    <tr style="background:#f1f5f9;font-weight:700;">
+      <td colspan="2" style="border:1px solid #0F172A;padding:6px;text-align:right;">TOTALS</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:center;">${num(d.packagesNo,0)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.netWeight)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.grossWeight)}</td>
+      <td style="border:1px solid #0F172A;padding:6px;text-align:right;">${num(d.volume)}</td>
+    </tr>
+  </table>
+  <p style="font-size:10px;margin-top:10px;color:#334155;">Total: ${num(d.packagesNo,0)} ${esc(d.packageType)} · Net ${num(d.netWeight)} KG · Gross ${num(d.grossWeight)} KG · ${num(d.volume)} CBM — packed in container ${esc(d.containerNo)||"—"}.</p>
+  <table style="width:100%;border-collapse:collapse;margin-top:34px;">
+    <tr><td style="width:40%;border-top:1px solid #0F172A;padding-top:4px;font-size:10px;">Prepared By (Signature &amp; Stamp)</td><td></td></tr>
+  </table>`;
+  return docShell("PACKING LIST", "Detailed Cargo Packing Statement", body, d);
+}
+
+/* ================================================================
+   SECTION D — iOS-SAFE PRINT / PREVIEW / DOWNLOAD
+   · Desktop & Android : hidden #printArea + window.print()
+   · iOS/iPadOS (WebKit) : the document opens in a NEW TAB as a
+     standalone HTML page — from there the native Share sheet gives
+     Print / Save to Files / AirDrop with zero pop-up blocking.
+   ================================================================ */
+function buildDoc(type, d){
+  if(type === "bl")      return buildBL(d);
+  if(type === "invoice") return buildInvoice(d);
+  return buildPacking(d);
+}
+
+/* Wrap document HTML into a standalone, printable page */
+function wrapPreview(innerHtml){
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ENTER — Document Preview</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;padding:16px;background:#f1f5f9;}
+  .doc{background:#fff;max-width:800px;margin:0 auto 24px;padding:28px;box-shadow:0 1px 4px rgba(2,6,23,.15);border-radius:6px;overflow-x:auto;}
+  @media print{
+    body{background:#fff;padding:0;}
+    .doc{box-shadow:none;margin:0 auto;padding:0;page-break-after:always;max-width:190mm;}
+    *{-webkit-print-color-adjust:exact !important; print-color-adjust:exact !important;}
+    tr,td,div{page-break-inside:avoid;}
+  }
+  @page{size:A4; margin:10mm;}
+</style></head>
+<body><div class="doc">${innerHtml}</div></body></html>`;
+}
+
+/* Open a Blob URL in a new tab — the reliable iOS file path */
+function openPreviewTab(fullHtml){
+  const blob = new Blob(["\ufeff" + fullHtml], {type:"text/html;charset=utf-8"});
+  const url  = URL.createObjectURL(blob);
+  const w    = window.open(url, "_blank");       // inside click handler => allowed
+  if(!w){ toast("Pop-up blocked — allow pop-ups for this site"); return false; }
+  setTimeout(() => URL.revokeObjectURL(url), 60000); // long grace period for iOS share sheet
+  return true;
+}
+
+/* Per-document PDF button */
+function printDoc(type){
+  const d = collectData();
+  const html = buildDoc(type, d);
+  if(isIOS){
+    if(openPreviewTab(wrapPreview(html))) toast(IOS_DOC_HINT);
+    return;
+  }
+  document.getElementById("printArea").innerHTML = html;
+  setTimeout(() => window.print(), 250);
+}
+
+/* All three documents stacked in one preview page (any platform) */
+function previewAll(){
+  const d = collectData();
+  const all = `<div style="page-break-after:always;">${buildBL(d)}</div>
+               <div style="page-break-after:always;">${buildInvoice(d)}</div>
+               <div>${buildPacking(d)}</div>`;
+  if(openPreviewTab(wrapPreview(all))) toast(isIOS ? IOS_DOC_HINT : "Preview opened in a new tab");
+}
+
+/* ================================================================
+   SECTION E — EXCEL EXPORT (.xls)
+   Blob download on desktop / Android; new-tab share path on iOS.
+   ================================================================ */
+function downloadBlob(blob, fname, iosHint){
+  if(isIOS){
+    const url = URL.createObjectURL(blob);
+    const w = window.open(url, "_blank");
+    if(w){ toast(iosHint); setTimeout(() => URL.revokeObjectURL(url), 60000); }
+    else toast("Pop-up blocked — allow pop-ups for this site");
+    return;
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+  toast("Excel file downloaded");
+}
+
+function exportExcel(type){
+  const d = collectData();
+  let table = "", fname = "";
+  const legalRow = (colspan) => `<tr><td colspan="${colspan}"></td></tr>
+      <tr><td colspan="${colspan}" style="font-size:8pt;color:#94a3b8;text-align:center;">${DISCLAIMER}</td></tr>
+      <tr><td colspan="${colspan}" style="font-size:8pt;color:#cbd5e1;text-align:right;">Powered by ENTER | Developed by Maher Ahmad Al Khder</td></tr>`;
+
+  if(type === "invoice"){
+    fname = `Commercial_Invoice_${d.invoiceNo||"draft"}.xls`;
+    table = `<table>
+      <tr><td colspan="4" style="font-size:16px;font-weight:bold;">COMMERCIAL INVOICE</td></tr>
+      <tr><td><b>Invoice No:</b></td><td>${esc(d.invoiceNo)}</td><td><b>Date:</b></td><td>${esc(d.invoiceDate)}</td></tr>
+      <tr><td><b>Shipper:</b></td><td>${esc(d.shipperName)}<br>${esc(d.shipperAddress)}</td>
+          <td><b>Consignee:</b></td><td>${esc(d.consigneeName)}<br>${esc(d.consigneeAddress)}</td></tr>
+      <tr><td><b>Vessel/Voyage:</b></td><td>${esc(d.vesselName)} / ${esc(d.voyageNo)}</td>
+          <td><b>Container:</b></td><td>${esc(d.containerNo)}</td></tr>
+      <tr><td><b>POL:</b></td><td>${esc(d.pol)}</td><td><b>POD:</b></td><td>${esc(d.pod)}</td></tr>
+      <tr><td colspan="4"></td></tr>
+      <tr style="background:#0F172A;color:#fff;font-weight:bold;">
+        <td>Marks & Nos</td><td>Description</td><td>Quantity</td><td>Total Value (${esc(d.currency)})</td></tr>
+      <tr><td>${esc(d.marks)}</td><td>${esc(d.goodsDescription)}</td>
+          <td>${num(d.packagesNo,0)} ${esc(d.packageType)}</td><td>${num(d.invoiceValue,2)}</td></tr>
+      <tr><td colspan="3" style="text-align:right;font-weight:bold;">TOTAL</td><td style="font-weight:bold;">${num(d.invoiceValue,2)}</td></tr>
+      ${legalRow(4)}
+    </table>`;
+  } else {
+    fname = `Packing_List_${d.blNo||"draft"}.xls`;
+    table = `<table>
+      <tr><td colspan="6" style="font-size:16px;font-weight:bold;">PACKING LIST</td></tr>
+      <tr><td><b>Shipper:</b></td><td colspan="2">${esc(d.shipperName)}<br>${esc(d.shipperAddress)}</td>
+          <td><b>Consignee:</b></td><td colspan="2">${esc(d.consigneeName)}<br>${esc(d.consigneeAddress)}</td></tr>
+      <tr><td><b>Vessel/Voyage:</b></td><td>${esc(d.vesselName)} / ${esc(d.voyageNo)}</td>
+          <td><b>Container/Seal:</b></td><td>${esc(d.containerNo)} / ${esc(d.sealNo)}</td>
+          <td><b>POL / POD:</b></td><td>${esc(d.pol)} / ${esc(d.pod)}</td></tr>
+      <tr><td colspan="6"></td></tr>
+      <tr style="background:#0F172A;color:#fff;font-weight:bold;">
+        <td>Marks</td><td>Description</td><td>Cartons</td><td>Net KG</td><td>Gross KG</td><td>CBM</td></tr>
+      <tr><td>${esc(d.marks)}</td><td>${esc(d.goodsDescription)}</td>
+          <td>${num(d.packagesNo,0)}</td><td>${num(d.netWeight)}</td><td>${num(d.grossWeight)}</td><td>${num(d.volume)}</td></tr>
+      <tr style="font-weight:bold;"><td colspan="2">TOTALS</td><td>${num(d.packagesNo,0)}</td>
+          <td>${num(d.netWeight)}</td><td>${num(d.grossWeight)}</td><td>${num(d.volume)}</td></tr>
+      ${legalRow(6)}
+    </table>`;
+  }
+  const content = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"></head><body>${table}</body></html>`;
+  downloadBlob(new Blob(["\ufeff" + content], {type:"application/vnd.ms-excel"}), fname, IOS_XLS_HINT);
+}
+
+window.addEventListener("load", restoreDraft);
+</script>
+</body>
+</html>
